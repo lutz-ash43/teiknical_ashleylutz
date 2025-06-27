@@ -20,7 +20,7 @@ In order to generate the app, from within the repo ru the command ```streamlit r
 - app.py runs the streamlit app through which the user can interact with the data and analyses.
       - the app begins by determining if the db has already been created and if not it creates it
       - otherwise there is functionality for the user to add/remove samples and conduct the analyses asked for. These analyses are hardcoded at the moment for the analyses asked for but to scale these would be made generalizeable with more parameterization.
-      - the groupby capability at the bottom of the app can identify the subsets asked for in part 4 of the analysis; but if you wanted to have a more explicit subset you could create selects for each column and their values, save this as a df and then apply the grouping. 
+      - at the bottom of the app the user can select columns to subset and filter from and then aggregate those columns to different counts. A future expansion would be allowing the user to select their own aggregation method.  
 
 
 
