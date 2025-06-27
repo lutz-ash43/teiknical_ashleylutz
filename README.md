@@ -2,7 +2,7 @@
 teikobio technical interview
 
 # Launching the application  
-In order to generate the app, from within the repo ru the command ```streamlit run app.py```
+In order to generate the app, from within the repo ru the command ```streamlit run app.py``` the app can should open in the browser but if not should be reachable at  http://localhost:8501
 - this will launch the streamlit application from which the user can add/drop samples, generate cell frequencies, run a Mann U test on the relative cell frequencies between responers and nonresponders, plot boxplots and conduct further grouping to determine counts of subset of intrerest
 - default paths are set for this project but these can be specificed as arguments using the parameters --db_path, --csv_path, --cell_cols 
 
