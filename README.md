@@ -18,7 +18,8 @@ In order to generate the app, from within the repo ru the command ```streamlit r
 - cellcount_analysis contains all the functional code for conducting the specific statistical tests and plots asked for in this tutorial. To scale this these functions could be made more generalizeable to take in any assay values, stratfy over time, or compare other groups (different medications, sick to healthy, ect)
     - I originally started the analysis as only a pairwise comparison between repsonders and nonresponders for each cell type frequency however after reflecting I thought the timing of the measures might affect these reuslts and be meaningful to the user. As such I switched to a multivariate model which assessed the affect of time and treatment. Ultimately the only significant effect was in the cd4_t_cells regardless of time so I only plotted the reuslts with respect to responder but as an extension to this app I would have made that a toggle by which the user can select to visualize the data stratified by time or not.  
 - app.py runs the streamlit app through which the user can interact with the data and analyses.
-      - the app begins by determining if the db has already been created and if not it creates it
+-     - the app begins by determining if the db has already been created and if not it creates it
+
       - otherwise there is functionality for the user to add/remove samples and conduct the analyses asked for. These analyses are hardcoded at the moment for the analyses asked for but to scale these would be made generalizeable with more parameterization.
       - at the bottom of the app the user can select columns to subset and filter from and then aggregate those columns to different counts. A future expansion would be allowing the user to select their own aggregation method.  
 
