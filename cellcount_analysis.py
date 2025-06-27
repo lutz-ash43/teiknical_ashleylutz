@@ -29,12 +29,15 @@ def cell_count_frequency(df, cell_cols):
     return(counts_final)
 
 def run_mannu_stats_on_cell_frequencies(counts_final, df, cell_cols):
+    # run mannu test to pairwise assess responders vs nonresponders 
     cell_cols.remove("sample")
     df_test= counts_final.merge(df.drop(cell_cols, axis=1)) # dropping to avoid nonrelative counts
+    # hard coded subset to conditions of interest
     df_test = df_test.query("condition=='melanoma' & sample_type=='PBMC' & treatment=='miraclib'")
     repsonders = df_test.query("response=='yes'")
     nonresponders = df_test.query("response=='no'") # specifying no to avoid nas
     stat_dict = {}
+    # run mannu on each cell type 
     for c in cell_cols: 
         stat, p = mannwhitneyu(repsonders.query("cell_type==@c")["relative_frequency"], nonresponders.query("cell_type==@c")["relative_frequency"])
         stat_dict[c] = p
@@ -42,11 +45,13 @@ def run_mannu_stats_on_cell_frequencies(counts_final, df, cell_cols):
     return(stat_dict, df_test)
 
 def run_stats_on_cell_frequencies(counts_final, df, cell_cols):
+    # run multivariate assessment to account for different time points 
     cell_cols.remove("sample")
     df_test= counts_final.merge(df.drop(cell_cols, axis=1)) # dropping to avoid nonrelative counts
+    # assign columns to categorical type 
     df_test["time_from_treatment_start"] = df_test["time_from_treatment_start"].astype("category")
     df_test["cell_type"] = df_test["cell_type"].astype("category")
-    df_test["relative_frequency"] = df_test["relative_frequency"]
+    # subset to conditions of interest 
     df_test = df_test.query("condition=='melanoma' & sample_type=='PBMC' & treatment=='miraclib'")
     stats_results = []
 
@@ -61,17 +66,20 @@ def run_stats_on_cell_frequencies(counts_final, df, cell_cols):
         anova_results["cell_type"] = c
         print(anova_results)
         stats_results.append(anova_results)
-        
+
+    # combine all stats into a dataframe      
     stats_df = pd.concat(stats_results).dropna()
+    # rename pvalue 
     stats_df=stats_df.rename({"PR(>F)" : "pvalue"}, axis=1)
     return(stats_df, df_test)
 
 def plot_responders_vs_nonresponders(df_test, stats_df): 
+    # copy df to manipulate and set plotting variables 
     df_plot = df_test.copy()
     ncols = 3
     cell_types = df_plot["cell_type"].unique()
     nrows = -(-len(cell_types) // ncols)
-
+    # create dictionary of response pvals since thats where the significant result is 
     stat_dict = dict(zip(stats_df.query("term == 'C(response)'").cell_type.values, stats_df.query("term == 'C(response)'").pvalue.values))
     # make subplot since we want to plot each pval on each plot
     fig = make_subplots(
@@ -98,7 +106,7 @@ def plot_responders_vs_nonresponders(df_test, stats_df):
             col=col
         )
 
-    # Final layout tweaks
+    # set height width 
     fig.update_layout(
         height=300 * nrows,
         width=1000,
@@ -110,4 +118,3 @@ def plot_responders_vs_nonresponders(df_test, stats_df):
     fig.update_xaxes(title_text="Response")
 
     return(fig)
-    #TODO add a print to styled pandas for stat_df
