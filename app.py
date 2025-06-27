@@ -127,19 +127,46 @@ if st.session_state.fig is not None:
     st.subheader("Boxplots of cell types")
     st.plotly_chart(st.session_state.fig)
 
-# add in a multiselect for users to continue to assess their data 
 if st.session_state.df is not None:
     # reload db so that it can be accessed in this thread 
     db = load_db(db_path)
+    # create set of potential group cols
+    st.subheader("Select features to filter and subset the DB by") 
+    filter_cols = st.multiselect(
+        "Filter one or more columns:",
+        options = get_column_names(db, "cell_counts"),
+        default=["sample_type"]
+    )
+
+    # create set of potential count cols 
+    query = []
+    for col in filter_cols: 
+        col_opts = st.multiselect(
+            col,
+            options = st.session_state.df[col].unique(),
+            default=None
+        )
+        query_str = f"{col}.isin({col_opts})"
+        query.append(query_str)
+    query = ' and '.join(query)
+
+    if filter_cols:
+        if len(query): 
+            # make sure that group and count calls are disjoint 
+            query_df = st.session_state.df.query(query)
+            st.subheader("query Results")
+            st.session_state.query_df = query_df
+            st.dataframe(st.session_state.query_df)
+    
     # create set of potential group cols 
     group_cols = st.multiselect(
-        "Group by one or more columns:",
+        "Group your subset by one or more columns:",
         options = get_column_names(db, "cell_counts"),
         default=["sample_type"]
     )
     # create set of potential count cols 
     count_cols = st.multiselect(
-        "Count values of what for a given group",
+        "select your count values",
         options = get_column_names(db, "cell_counts"),
         default=["sample"]
     )
@@ -148,9 +175,8 @@ if st.session_state.df is not None:
         if count_cols: 
             # make sure that group and count calls are disjoint 
             if set(group_cols).isdisjoint(set(count_cols)): 
-                grouped_df = st.session_state.df.groupby(group_cols)[count_cols].count().reset_index()
+                grouped_df = st.session_state.query_df.groupby(group_cols)[count_cols].count().reset_index()
                 st.subheader("Grouped Results")
                 st.session_state.agg_df = st.dataframe(grouped_df)
             else : 
                 st.warning("cannot group by columns you are trying to count")
-
