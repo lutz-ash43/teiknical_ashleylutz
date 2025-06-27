@@ -35,6 +35,7 @@ with st.form("add_form"):
     input_path = st.text_input("path to new data")
     submitted = st.form_submit_button("Add Sample")
     if submitted:
+        # add samples 
         add_sample(db_path, input_path)
         st.success(f"Samples from {input_path} added.")
 
@@ -42,23 +43,26 @@ with st.form("add_form"):
 st.header("Remove Sample")
 sample_ids_to_remove = st.text_input("Sample IDs to remove")
 if st.button("Remove Sample"):
+    # covert samples string to list 
     sample_ids_to_remove = [s.strip() for s in sample_ids_to_remove.split(',')]
+    # call remove function 
     remove_samples(db_path, sample_ids_to_remove)
-    # your deletion logic
     st.warning(f"Samples {sample_ids_to_remove} removed.")
 
 
 # Section 3: Compute and show relative frequencies
 st.header("Compute Relative Frequencies")
 if st.button("Calculate Frequencies"):
+    # reload db so that we get any changes that were added/dropped
     st.session_state.db = load_db(db_path)
     df = pd.read_sql("SELECT * FROM cell_counts", st.session_state.db)
     df_freq = cell_count_frequency(df, cell_cols)
     # save variables to session 
     st.session_state.df_freq=df_freq
     st.session_state.df=df
+    st.session_state.db.close()
 
-
+# show dataframe 
 if st.session_state.df_freq is not None:
     st.subheader("Relative Frequencies")
     st.dataframe(st.session_state.df_freq)
@@ -75,6 +79,7 @@ if st.button("Run Stats"):
     else : 
         st.warning("Generate relative cell frequencuies before running stats")
 
+# show dataframe
 if st.session_state.stats_df is not None:
     st.subheader("Stats Output")
     st.dataframe(st.session_state.stats_df)
@@ -90,19 +95,22 @@ if st.button("Plot Boxplots"):
     else : 
         st.warning("Generate stats before plotting")
 
+# show figure 
 if st.session_state.fig is not None:
     st.subheader("Boxplots of cell types")
     st.plotly_chart(st.session_state.fig)
 
 # add in a multiselect for users to continue to assess their data 
 if st.session_state.df is not None:
-    db =  st.session_state.db
+    # reload db so that it can be accessed in this thread 
+    db = load_db(db_path)
+    # create set of potential group cols 
     group_cols = st.multiselect(
         "Group by one or more columns:",
         options = get_column_names(db, "cell_counts"),
         default=["sample_type"]
     )
-
+    # create set of potential count cols 
     count_cols = st.multiselect(
         "Count values of what for a given group",
         options = get_column_names(db, "cell_counts"),
@@ -111,6 +119,7 @@ if st.session_state.df is not None:
 
     if group_cols:
         if count_cols: 
+            # make sure that group and count calls are disjoint 
             if set(group_cols).isdisjoint(set(count_cols)): 
                 grouped_df = st.session_state.df.groupby(group_cols)[count_cols].count().reset_index()
                 st.subheader("Grouped Results")
