@@ -1,13 +1,40 @@
 import streamlit as st 
 import os
+import argparse
 import sqlite3
 import pandas as pd
 from load_db import load_csv_to_db, add_sample, remove_samples, create_db, load_db, get_column_names
 from cellcount_analysis import cell_count_frequency, run_stats_on_cell_frequencies, plot_responders_vs_nonresponders
 
-db_path = "data/cell_counts.db"
-csv_path = "data/cell-count.csv"
-cell_cols = ["b_cell", "cd8_t_cell", "cd4_t_cell", "nk_cell", "monocyte", "sample"]
+# adding paths as arguments for increased flexibility
+# defaults are set for this project 
+def get_args():
+    parser = argparse.ArgumentParser(description="Cell sample analysis app")
+    parser.add_argument(
+        "--db_path",
+        type=str,
+        default="data/cell_counts.db",
+        help="Path to the SQLite database"
+    )
+    parser.add_argument(
+        "--csv_path",
+        type=str,
+        default="data/cell-count.csv",
+        help="Path to the initial CSV file"
+    )
+    parser.add_argument(
+        "--cell_cols",
+        nargs="+",
+        default=["b_cell", "cd8_t_cell", "cd4_t_cell", "nk_cell", "monocyte", "sample"],
+        help="List of cell column names"
+    )
+    return parser.parse_args()
+
+args = get_args()
+
+db_path = args.db_path
+csv_path = args.csv_path
+cell_cols = args.cell_cols
 
 if not os.path.exists(db_path):
     print(f"Database not found at {db_path}. Creating new database...")
