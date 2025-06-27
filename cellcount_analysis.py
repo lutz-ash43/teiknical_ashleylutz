@@ -1,12 +1,9 @@
 import pandas as pd 
-import numpy as np 
-import plotly.express as px 
-import scipy
-import statsmodels.api as sm 
 from scipy.stats import mannwhitneyu
-from load_db import view_all_samples_as_pandas
+import statsmodels.formula.api as smf
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+from statsmodels.stats.anova import anova_lm
 
 
 def cell_count_frequency(df, cell_cols):
@@ -31,7 +28,7 @@ def cell_count_frequency(df, cell_cols):
     
     return(counts_final)
 
-def run_stats_on_cell_frequencies(counts_final, df, cell_cols):
+def run_mannu_stats_on_cell_frequencies(counts_final, df, cell_cols):
     cell_cols.remove("sample")
     df_test= counts_final.merge(df.drop(cell_cols, axis=1)) # dropping to avoid nonrelative counts
     df_test = df_test.query("condition=='melanoma' & sample_type=='PBMC' & treatment=='miraclib'")
@@ -44,12 +41,38 @@ def run_stats_on_cell_frequencies(counts_final, df, cell_cols):
  
     return(stat_dict, df_test)
 
-def plot_responders_vs_nonresponders(stat_dict, df_test, cell_cols): 
+def run_stats_on_cell_frequencies(counts_final, df, cell_cols):
+    cell_cols.remove("sample")
+    df_test= counts_final.merge(df.drop(cell_cols, axis=1)) # dropping to avoid nonrelative counts
+    df_test["time_from_treatment_start"] = df_test["time_from_treatment_start"].astype("category")
+    df_test["cell_type"] = df_test["cell_type"].astype("category")
+    df_test["relative_frequency"] = df_test["relative_frequency"]
+    df_test = df_test.query("condition=='melanoma' & sample_type=='PBMC' & treatment=='miraclib'")
+    stats_results = []
+
+    for c in df_test["cell_type"].unique():
+        df_cell = df_test.query("cell_type==@c")
+        # Fit OLS model for ANOVA
+        model = smf.ols("relative_frequency ~ C(response) * C(time_from_treatment_start)", data=df_cell).fit()
+        anova_results = anova_lm(model, typ=2)  # Type II ANOVA
+
+        # Add cell type to each row
+        anova_results = anova_results.reset_index().rename(columns={'index': 'term'})
+        anova_results["cell_type"] = c
+        print(anova_results)
+        stats_results.append(anova_results)
+        
+    stats_df = pd.concat(stats_results).dropna()
+    stats_df=stats_df.rename({"PR(>F)" : "pvalue"}, axis=1)
+    return(stats_df, df_test)
+
+def plot_responders_vs_nonresponders(df_test, stats_df): 
     df_plot = df_test.copy()
     ncols = 3
     cell_types = df_plot["cell_type"].unique()
     nrows = -(-len(cell_types) // ncols)
 
+    stat_dict = dict(zip(stats_df.query("term == 'C(response)'").cell_type.values, stats_df.query("term == 'C(response)'").pvalue.values))
     # make subplot since we want to plot each pval on each plot
     fig = make_subplots(
         rows=nrows,

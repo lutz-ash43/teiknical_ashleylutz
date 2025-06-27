@@ -1,13 +1,19 @@
 import streamlit as st 
-from load_db import load_csv_to_db, view_all_samples_as_pandas, add_sample, remove_sample, create_db, load_db, get_column_names
+import os
+import sqlite3
+import pandas as pd
+from load_db import load_csv_to_db, add_sample, remove_samples, create_db, load_db, get_column_names
 from cellcount_analysis import cell_count_frequency, run_stats_on_cell_frequencies, plot_responders_vs_nonresponders
 
 db_path = "data/cell_counts.db"
 csv_path = "data/cell-count.csv"
 cell_cols = ["b_cell", "cd8_t_cell", "cd4_t_cell", "nk_cell", "monocyte", "sample"]
 
-create_db(db_path, csv_path)
-db = load_db(db_path)
+if not os.path.exists(db_path):
+    print(f"Database not found at {db_path}. Creating new database...")
+    create_db(db_path)
+else:
+    print(f"Database found at {db_path}.")
 
 # setting all display values to None 
 if "df_freq" not in st.session_state:
@@ -29,20 +35,24 @@ with st.form("add_form"):
     input_path = st.text_input("path to new data")
     submitted = st.form_submit_button("Add Sample")
     if submitted:
-        add_sample(db, input_path)
+        add_sample(db_path, input_path)
         st.success(f"Samples from {input_path} added.")
 
 # Section 2: Remove a sample
 st.header("Remove Sample")
 sample_ids_to_remove = st.text_input("Sample IDs to remove")
 if st.button("Remove Sample"):
-    remove_sample(db, sample_ids_to_remove)
+    sample_ids_to_remove = [s.strip() for s in sample_ids_to_remove.split(',')]
+    remove_samples(db_path, sample_ids_to_remove)
+    # your deletion logic
     st.warning(f"Samples {sample_ids_to_remove} removed.")
+
 
 # Section 3: Compute and show relative frequencies
 st.header("Compute Relative Frequencies")
 if st.button("Calculate Frequencies"):
-    df = view_all_samples_as_pandas(db)
+    st.session_state.db = load_db(db_path)
+    df = pd.read_sql("SELECT * FROM cell_counts", st.session_state.db)
     df_freq = cell_count_frequency(df, cell_cols)
     # save variables to session 
     st.session_state.df_freq=df_freq
@@ -59,6 +69,7 @@ if st.button("Run Stats"):
     if st.session_state.df_freq is not None: 
         stats_df, test_df = run_stats_on_cell_frequencies(st.session_state.df_freq, st.session_state.df, cell_cols)
         # save variables to session 
+        stats_df = stats_df.reset_index().style.background_gradient(subset=["pvalue"], cmap="RdYlGn_r")
         st.session_state.stats_df=stats_df
         st.session_state.test_df=test_df
     else : 
@@ -73,7 +84,7 @@ if st.session_state.stats_df is not None:
 st.header("Plot Cell Type Frequencies")
 if st.button("Plot Boxplots"):
     if st.session_state.stats_df is not None:
-        fig = plot_responders_vs_nonresponders(st.session_state.stats_df, st.session_state.test_df, cell_cols)
+        fig = plot_responders_vs_nonresponders( st.session_state.test_df, st.session_state.stats_df.data)
         st.session_state.fig = fig
         
     else : 
@@ -84,7 +95,8 @@ if st.session_state.fig is not None:
     st.plotly_chart(st.session_state.fig)
 
 # add in a multiselect for users to continue to assess their data 
-if st.session_state.df is not None: 
+if st.session_state.df is not None:
+    db =  st.session_state.db
     group_cols = st.multiselect(
         "Group by one or more columns:",
         options = get_column_names(db, "cell_counts"),

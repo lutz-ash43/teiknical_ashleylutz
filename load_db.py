@@ -60,18 +60,21 @@ def create_db(db_path, csv_path):
 
 
 
-def add_sample(db, sample_data_path):
+def add_sample(db_path, sample_data_path):
     # sample_data is a dict or DataFrame row
+    db = sqlite3.connect(db_path)
     new_data = pd.DataFrame(sample_data_path) #assuming sample_data is a dataframe
     new_data.to_sql("cell_counts", db, if_exists="append", index=False)
+    db.close()
 
-def remove_samples(db, sample_ids):
+def remove_samples(db_path, sample_ids):
+    db = sqlite3.connect(db_path)
     if not sample_ids:
         print("No sample IDs provided.")
         return
 
     placeholders = ','.join(['?'] * len(sample_ids))  
-    query = f"DELETE FROM cell_counts WHERE sample_id IN ({placeholders})"
+    query = f"DELETE FROM cell_counts WHERE sample IN ({placeholders})"
     cursor = db.cursor()
     cursor.execute(query, sample_ids)
     db.commit()
@@ -80,15 +83,16 @@ def remove_samples(db, sample_ids):
         print("No matching samples found.")
     else:
         print(f"{cursor.rowcount} sample(s) removed: {sample_ids}")
+    db.close()
 
 def load_db(db_path):
     db = sqlite3.connect("data/cell_counts.db")
     return(db)
 
-def view_all_samples_as_pandas(db):
-    """Print all rows (for testing)."""
-    df = pd.read_sql("SELECT * FROM cell_counts", db)
-    return(df)
+# def view_all_samples_as_pandas(db):
+#     """Print all rows (for testing)."""
+#     df = pd.read_sql("SELECT * FROM cell_counts", db)
+#     return(df)
 
 def get_column_names(db, table_name):
     cursor = db.execute(f"PRAGMA table_info({table_name})")
